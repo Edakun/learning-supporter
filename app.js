@@ -4,6 +4,7 @@ const state = {
         sheetUrl: 'https://docs.google.com/spreadsheets/d/1IBZx9KSIfYdCSBZKIdxmJT0tLq1XpDlB5sVn065qo_c/edit#gid=0',
         gasUrl: 'https://script.google.com/macros/s/AKfycbzVWm3oZv1VdH-Rp-ujOfxmXE_WwskA0VCr3466w1vwFpsxhZhcJzZWtPnbYEnS7TK9/exec', 
         webhookUrl: 'https://discord.com/api/webhooks/1482625093560565761/JfZK_0mRc-27HBt3IvYnF3u...',
+        webhookUrl2: '', 
         targetTime: 60,
         targetCount: 20,
         couponDays: 3,
@@ -555,14 +556,19 @@ async function checkNotifications() {
 }
 
 async function sendDiscord(message) {
-    try {
-        await fetch(state.settings.webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: message })
-        });
-    } catch (e) {
-        console.error('Discord通知失敗:', e);
+    const urls = [state.settings.webhookUrl, state.settings.webhookUrl2].filter(url => !!url);
+    if (urls.length === 0) return;
+
+    for (const url of urls) {
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: message })
+            });
+        } catch (e) {
+            console.error('Discord通知失敗:', url, e);
+        }
     }
 }
 
@@ -571,6 +577,7 @@ function loadParentView() {
     document.getElementById('sheet-url-input').value = state.settings.sheetUrl || '';
     document.getElementById('gas-url-input').value = state.settings.gasUrl || '';
     document.getElementById('webhook-url-input').value = state.settings.webhookUrl || '';
+    document.getElementById('webhook-url2-input').value = state.settings.webhookUrl2 || '';
     document.getElementById('coupon-days-input').value = state.settings.couponDays || 3;
     document.getElementById('coupon-prize-input').value = state.settings.couponPrize || '';
     document.getElementById('target-time-input').value = state.settings.targetTime;
@@ -669,6 +676,7 @@ function saveParentSettings() {
     state.settings.sheetUrl = document.getElementById('sheet-url-input').value;
     state.settings.gasUrl = document.getElementById('gas-url-input').value;
     state.settings.webhookUrl = document.getElementById('webhook-url-input').value;
+    state.settings.webhookUrl2 = document.getElementById('webhook-url2-input').value;
     state.settings.couponDays = parseInt(document.getElementById('coupon-days-input').value) || 3;
     state.settings.couponPrize = document.getElementById('coupon-prize-input').value || 'TikTok 2時間見放題権';
     state.settings.targetTime = parseInt(document.getElementById('target-time-input').value) || 60;
