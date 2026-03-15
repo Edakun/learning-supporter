@@ -20,7 +20,14 @@ const state = {
         streakLastDateStr: '', // 連続記録を追跡するための最終クリア日
         clearedDates: [], // 追加：過去に目標を達成した日付（YYYY-MM-DD形式）のリスト
         earnedCoupons: [], // 追加：獲得したクーポンのリスト { id, title, isUsed, date }
-        wrongQuestionIds: [] // 追加：間違えた問題のIDリスト
+        wrongQuestionIds: [], // 追加：間違えた問題のIDリスト
+        subjectStats: { // 追加：教科ごとの正解率分析用
+            '国語': { correct: 0, total: 0 },
+            '算数': { correct: 0, total: 0 },
+            '英語': { correct: 0, total: 0 },
+            '社会': { correct: 0, total: 0 },
+            '理科': { correct: 0, total: 0 }
+        }
     },
     sheetQuestions: [],
     dummyQuestions: [
@@ -405,6 +412,15 @@ function handleAnswer(selectedIndex, correctIndex, explanation, btnEl) {
         }
     }
 
+    // 教科ごとの統計を更新 (5教科の場合のみ)
+    if (state.progress.subjectStats && q.subject) {
+        const stats = state.progress.subjectStats[q.subject];
+        if (stats) {
+            stats.total++;
+            if (isCorrect) stats.correct++;
+        }
+    }
+
     // プログレス更新
     state.progress.questionsAnswered++;
     saveProgress();
@@ -565,6 +581,66 @@ function loadParentView() {
     days.forEach(day => {
         const sel = document.getElementById(`sel-${day}`);
         if (sel) sel.value = state.settings.schedule[day] || '全教科複合';
+    });
+
+    // 苦手分析グラフを描画
+    setTimeout(renderAnalysisChart, 100);
+}
+
+let analysisChartInstance = null;
+function renderAnalysisChart() {
+    const ctx = document.getElementById('analysis-chart');
+    if (!ctx) return;
+
+    const subjects = ['国語', '算数', '英語', '社会', '理科'];
+    const data = subjects.map(s => {
+        const stats = state.progress.subjectStats?.[s];
+        if (!stats || stats.total === 0) return 0;
+        return Math.round((stats.correct / stats.total) * 100);
+    });
+
+    if (analysisChartInstance) {
+        analysisChartInstance.destroy();
+    }
+
+    analysisChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: subjects,
+            datasets: [{
+                label: '正解率 (%)',
+                data: data,
+                backgroundColor: 'rgba(255, 107, 107, 0.2)',
+                borderColor: 'rgba(255, 107, 107, 1)',
+                borderWidth: 3,
+                pointBackgroundColor: 'rgba(255, 107, 107, 1)',
+                pointBorderColor: '#fff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            scales: {
+                r: {
+                    angleLines: { display: true, color: '#eee' },
+                    grid: { color: '#eee' },
+                    suggestedMin: 0,
+                    suggestedMax: 100,
+                    ticks: { display: false, stepSize: 20 },
+                    pointLabels: {
+                        font: { size: 14, weight: 'bold', family: "'M PLUS Rounded 1c', sans-serif" },
+                        color: '#4A5568'
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => ` 正解率: ${context.raw}%`
+                    }
+                }
+            }
+        }
     });
 }
 

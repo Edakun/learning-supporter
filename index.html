@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=3">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div id="app">
@@ -183,6 +184,15 @@
                     <div class="schedule-grid" id="schedule-grid">
                         <!-- JSで生成 -->
                     </div>
+                </div>
+
+                <!-- 苦手分析グラフ -->
+                <div class="setting-group" style="background: #fff; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 24px;">
+                    <label style="font-size: 1.1rem; color: var(--secondary); margin-bottom: 16px; display: block;">📊 にがて分析グラフ (5教科のバランス)</label>
+                    <div style="max-width: 350px; margin: 0 auto;">
+                        <canvas id="analysis-chart"></canvas>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-light); text-align: center; margin-top: 12px;">※外側の線に近いほど、正解率が高い教科です。</p>
                 </div>
 
                 <button id="save-settings-btn" class="btn-primary mt-4">💾 設定を保存する</button>
