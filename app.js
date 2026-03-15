@@ -9,7 +9,7 @@ const state = {
         couponDays: 3,
         couponPrize: 'TikTok 2時間見放題権',
         schedule: {
-            '日': '自由選択', '月': '国語', '火': '算数', '水': '英語', '木': '社会', '金': '理科', '土': '復習'
+            '日': '全教科複合', '月': '国語', '火': '算数', '水': '英語', '木': '社会', '金': '理科', '土': '復習'
         }
     },
     progress: {
@@ -19,18 +19,20 @@ const state = {
         streakDays: 0,
         streakLastDateStr: '', // 連続記録を追跡するための最終クリア日
         clearedDates: [], // 追加：過去に目標を達成した日付（YYYY-MM-DD形式）のリスト
-        earnedCoupons: [] // 追加：獲得したクーポンのリスト { id, title, isUsed, date }
+        earnedCoupons: [], // 追加：獲得したクーポンのリスト { id, title, isUsed, date }
+        wrongQuestionIds: [] // 追加：間違えた問題のIDリスト
     },
     sheetQuestions: [],
     dummyQuestions: [
-        { subject: '国語', q: '「走る」の反対に近い意味を持つ言葉は？', choices: ['歩く', '止まる', '飛ぶ', '泳ぐ'], a: 1, explanation: '「走る」という動作をしない状態は「止まる」です。' },
-        { subject: '算数', q: '15 + 27 は？', choices: ['32', '42', '52', '62'], a: 1, explanation: '10の位は1+2=3。1の位は5+7=12なので、あわせて42です。' },
-        { subject: '英語', q: '「りんご」を英語で言うと？', choices: ['Apple', 'Banana', 'Orange', 'Grape'], a: 0, explanation: 'りんごは英語で Apple です。' },
-        { subject: '社会', q: '日本の首都はどこですか？', choices: ['大阪', '京都', '東京', '北海道'], a: 2, explanation: '日本の首都は東京です。' },
-        { subject: '理科', q: '水が凍ると何になる？', choices: ['お湯', '水蒸気', '氷', '雲'], a: 2, explanation: '水は0度以下になると凍って氷（こおり）になります。' }
+        { id: 'd1', subject: '国語', q: '「走る」の反対に近い意味を持つ言葉は？', choices: ['歩く', '止まる', '飛ぶ', '泳ぐ'], a: 1, explanation: '「走る」という動作をしない状態は「止まる」です。' },
+        { id: 'd2', subject: '算数', q: '15 + 27 は？', choices: ['32', '42', '52', '62'], a: 1, explanation: '10の位は1+2=3。1の位は5+7=12なので、あわせて42です。' },
+        { id: 'd3', subject: '英語', q: '「りんご」を英語で言うと？', choices: ['Apple', 'Banana', 'Orange', 'Grape'], a: 0, explanation: 'りんごは英語で Apple です。' },
+        { id: 'd4', subject: '社会', q: '日本の首都はどこですか？', choices: ['大阪', '京都', '東京', '北海道'], a: 2, explanation: '日本の首都は東京です。' },
+        { id: 'd5', subject: '理科', q: '水が凍ると何になる？', choices: ['お湯', '水蒸気', '氷', '雲'], a: 2, explanation: '水は0度以下になると凍って氷（こおり）になります。' }
     ],
     currentQuestions: [],
     currentQIndex: 0,
+    isReviewMode: false, // 追加：現在復習モードかどうか
     timerInterval: null,
     hasNotifiedTime: false,
     hasNotifiedCount: false
@@ -122,7 +124,12 @@ async function syncWithCloud(mode = 'save') {
 function loadSettings() {
     const saved = localStorage.getItem('studySettings');
     if (saved) {
-        state.settings = { ...state.settings, ...JSON.parse(saved) };
+        const localSettings = JSON.parse(saved);
+        // localStorageにgasUrlが空で保存されている場合、ハードコードされた値を優先する
+        if (!localSettings.gasUrl && state.settings.gasUrl) {
+            localSettings.gasUrl = state.settings.gasUrl;
+        }
+        state.settings = { ...state.settings, ...localSettings };
     }
     const savedQs = localStorage.getItem('studyQuestions');
     if (savedQs) {
@@ -176,12 +183,12 @@ function updateHomeDisplay() {
         `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日(${dayName})`;
 
     // 今日の教科
-    const todaySubject = state.settings.schedule[dayName] || '自由選択';
+    const todaySubject = state.settings.schedule[dayName] || '全教科複合';
 
     // アイコンのマッピング
     const iconMap = {
         '国語': '📚', '算数': '🧮', '英語': '🔤', '社会': '🗺️', '理科': '🔬',
-        '自由選択': '🌟', '復習': '♻️'
+        '全教科複合': '🌈', '復習': '♻️'
     };
     const icon = iconMap[todaySubject] || '📝';
 
@@ -284,8 +291,19 @@ async function startStudy() {
     // シートのデータがあればそれを使用、なければダミー
     let allQs = state.sheetQuestions && state.sheetQuestions.length > 0 ? state.sheetQuestions : state.dummyQuestions;
 
-    // 今日の教科学習の場合、教科と一致する問題を抽出。「自由選択」「復習」の場合はすべてを含める
-    if (todaySubject !== '自由選択' && todaySubject !== '復習') {
+    // 今日の教科学習の場合、教科と一致する問題を抽出。「全教科複合」「復習」の場合はすべてを含める
+    state.isReviewMode = false;
+    if (todaySubject === '復習') {
+        const wrongIds = state.progress.wrongQuestionIds || [];
+        const reviewQs = allQs.filter(q => wrongIds.includes(String(q.id)));
+        if (reviewQs.length > 0) {
+            allQs = reviewQs;
+            state.isReviewMode = true;
+            showToast(`🔥 復習モード！過去に間違えた${reviewQs.length}問に挑戦します`);
+        } else {
+            showToast('✅ 復習する問題がありません！全問から出題します');
+        }
+    } else if (todaySubject !== '全教科複合') {
         const filteredQs = allQs.filter(q => q.subject === todaySubject);
         if (filteredQs.length > 0) {
             allQs = filteredQs; // 一致する問題があれば絞り込み反映（なければ全問から出題）
@@ -353,6 +371,7 @@ function renderQuestion() {
 
 // 解答の処理
 function handleAnswer(selectedIndex, correctIndex, explanation, btnEl) {
+    const q = state.currentQuestions[state.currentQIndex];
     const isCorrect = (selectedIndex === correctIndex);
     const modal = document.getElementById('explanation-modal');
     const badge = document.getElementById('result-badge');
@@ -362,15 +381,28 @@ function handleAnswer(selectedIndex, correctIndex, explanation, btnEl) {
     const allBtns = document.getElementById('choices-container').querySelectorAll('button');
     allBtns.forEach(b => b.disabled = true); // 連打防止
 
+    if (!state.progress.wrongQuestionIds) state.progress.wrongQuestionIds = [];
+
     if (isCorrect) {
         btnEl.classList.add('correct');
         badge.textContent = '⭕️ 大正解！すごい！';
         badge.className = 'result-badge correct';
+        
+        // 復習リストに入っていれば削除（克服！）
+        const idx = state.progress.wrongQuestionIds.indexOf(String(q.id));
+        if (idx > -1) {
+            state.progress.wrongQuestionIds.splice(idx, 1);
+        }
     } else {
         btnEl.classList.add('wrong');
         allBtns[correctIndex].classList.add('correct'); // 正解を教える
         badge.textContent = '❌ おしい！';
         badge.className = 'result-badge wrong';
+
+        // 復習リストに追加
+        if (!state.progress.wrongQuestionIds.includes(String(q.id))) {
+            state.progress.wrongQuestionIds.push(String(q.id));
+        }
     }
 
     // プログレス更新
@@ -398,6 +430,19 @@ function handleAnswer(selectedIndex, correctIndex, explanation, btnEl) {
 
 function loadNextQuestion() {
     document.getElementById('explanation-modal').classList.add('hidden');
+    
+    // 復習モード中に全問クリアした場合の処理
+    if (state.isReviewMode && (!state.progress.wrongQuestionIds || state.progress.wrongQuestionIds.length === 0)) {
+        state.isReviewMode = false;
+        // 全教科の問題リストに切り替える
+        const allQs = state.sheetQuestions && state.sheetQuestions.length > 0 ? state.sheetQuestions : state.dummyQuestions;
+        state.currentQuestions = [...allQs].sort(() => 0.5 - Math.random());
+        state.currentQIndex = 0;
+        showToast('🎊 復習完了！全教科の問題に切り替えます');
+        renderQuestion();
+        return;
+    }
+
     state.currentQIndex++;
 
     // 足りなければループ
@@ -519,14 +564,14 @@ function loadParentView() {
     const days = ['日', '月', '火', '水', '木', '金', '土'];
     days.forEach(day => {
         const sel = document.getElementById(`sel-${day}`);
-        if (sel) sel.value = state.settings.schedule[day];
+        if (sel) sel.value = state.settings.schedule[day] || '全教科複合';
     });
 }
 
 function generateScheduleGrid() {
     const grid = document.getElementById('schedule-grid');
     const days = ['日', '月', '火', '水', '木', '金', '土'];
-    const subjects = ['国語', '算数', '英語', '社会', '理科', '復習', '自由選択'];
+    const subjects = ['国語', '算数', '英語', '社会', '理科', '復習', '全教科複合'];
 
     grid.innerHTML = '';
     days.forEach(day => {
