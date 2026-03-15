@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>学習習慣サポーター</title>
+    <meta name="description" content="お子様の自律的な学習を支えるサポートアプリです。日々の目標達成を応援します。">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+    <div id="app">
+        <!-- ナビゲーションバー -->
+        <header class="app-header">
+            <h1 class="logo">🌟 スタディ応援団</h1>
+            <button id="nav-parent-btn" class="icon-btn" aria-label="保護者設定">⚙️</button>
+        </header>
+
+        <!-- ホーム画面（お子様トップ） -->
+        <main id="view-home" class="view active">
+            <div class="today-hero">
+                <h2>きょうのきょうか は...</h2>
+                <div class="subject-badge" id="today-subject-badge">
+                    <span class="icon">📚</span>
+                    <span class="text">こくご</span>
+                </div>
+                <p class="date-display" id="date-display">2026年3月15日(日)</p>
+            </div>
+
+            <div class="progress-section">
+                <h3>きょうの もくひょう <span style="font-size: 0.8rem; font-weight: normal;">(どちらか１つでクリア！)</span></h3>
+                
+                <div class="progress-card">
+                    <div class="progress-label">
+                        <span>⏱️ べんきょうじかん</span>
+                        <span id="time-text">0 / 60 分</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill time-fill" id="time-bar"></div>
+                    </div>
+                </div>
+
+                <div class="progress-card">
+                    <div class="progress-label">
+                        <span>🎯 もんだいクリア数</span>
+                        <span id="count-text">0 / 20 問</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill count-fill" id="count-bar"></div>
+                    </div>
+                </div>
+
+                <div class="progress-card" style="margin-top: 24px;">
+                    <div class="progress-label streak-label" style="align-items: center; justify-content: space-between;">
+                        <span>🔥 れんぞくクリア記録</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="streak-text" style="color: var(--primary); font-weight: 900; font-size: 1.2rem;">0 日連続！</span>
+                            <button id="show-calendar-btn" class="icon-btn" style="width: 36px; height: 36px; font-size: 1.2rem; background: var(--secondary); color: white;" aria-label="カレンダーを見る">📅</button>
+                        </div>
+                    </div>
+                    <div style="text-align: right; margin-top: 4px; font-size: 0.85rem; color: var(--text-light); font-weight: 700;">
+                        あと <span id="days-to-next-coupon" style="color: var(--primary); font-size: 1rem;">3日</span> でチケットゲット！
+                    </div>
+                </div>
+
+                <div class="progress-card" style="margin-top: 12px; background: #FFF9E6; border: 2px dashed var(--accent);">
+                    <div class="progress-label streak-label" style="align-items: center;">
+                        <span>🎁 ごほうびチケット</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="unused-coupon-count" style="color: var(--text-main); font-weight: 900; font-size: 1.2rem;">0 枚</span>
+                            <button id="show-coupon-box-btn" class="btn-primary" style="padding: 4px 12px; font-size: 0.9rem; border-radius: 8px; width: auto; background: var(--primary);">つかう</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-section">
+                <button id="start-study-btn" class="btn-primary animate-pulse">
+                    🚀 今日の勉強を始める！
+                </button>
+            </div>
+        </main>
+
+        <!-- 学習画面（問題演習） -->
+        <main id="view-study" class="view">
+            <div class="study-header">
+                <button id="quit-study-btn" class="btn-ghost">🔙 やめる</button>
+                <div class="live-timer" id="live-timer">⏱️ 00:00</div>
+                <div class="question-counter">問 <span id="current-q-num">1</span></div>
+            </div>
+
+            <div class="question-container">
+                <h3 id="question-text">ここに問題文が表示されます。読み込み中...</h3>
+            </div>
+
+            <div class="choices-container" id="choices-container">
+                <!-- Javascriptで生成 -->
+            </div>
+
+            <!-- 解説モーダル -->
+            <div id="explanation-modal" class="modal-overlay hidden">
+                <div class="modal-content">
+                    <div id="result-badge" class="result-badge">⭕️ せいかい！</div>
+                    <p id="explanation-text">ここに解説が表示されます。</p>
+                    <button id="next-question-btn" class="btn-primary mt-4">つぎのもんだいへ ➡️</button>
+                    <button id="close-explanation-btn" class="btn-ghost mt-4 hidden">おわり 🏠</button>
+                </div>
+            </div>
+            
+                    <!-- ご褒美クーポンモーダル (獲得時) -->
+            <div id="coupon-modal" class="modal-overlay hidden" style="z-index: 200;">
+                <div class="modal-content coupon-content">
+                    <h2 class="animate-pulse" style="color: var(--primary); font-size: 2rem; margin-bottom: 16px;">🎉 おめでとう！！ 🎉</h2>
+                    <p style="font-weight: 700; margin-bottom: 24px;">3日連続で目標をクリアしたよ！<br>チケットを1枚手に入れた！</p>
+                    <div class="coupon-ticket">
+                        <div class="coupon-header">🎁 ごほうびクーポン 🎁</div>
+                        <div class="coupon-body" id="coupon-prize">
+                            TikTok 2時間見放題権
+                        </div>
+                    </div>
+                    <button id="close-coupon-btn" class="btn-primary mt-4" style="background: var(--secondary);">やったー！ 🌟</button>
+                </div>
+            </div>
+
+            <!-- ここにあったチケットBoxを外に移動しました -->
+        </main>
+
+        <!-- 保護者設定画面 -->
+        <main id="view-parent" class="view">
+            <div class="parent-header">
+                <button id="back-home-btn" class="btn-ghost">🔙 戻る</button>
+                <h2>保護者用 管理・設定</h2>
+            </div>
+
+            <div class="settings-container">
+                <div class="setting-group">
+                    <label>📝 スプレッドシートURL (問題データ)</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="url" id="sheet-url-input" placeholder="https://docs.google.com/spreadsheets/d/.../edit" class="input-field">
+                        <button id="fetch-sheet-btn" class="btn-ghost" style="white-space: nowrap; border-color: var(--secondary); color: var(--secondary); font-weight: 800;">📥 読み込む</button>
+                    </div>
+                    <p class="help-text" id="sheet-status-text">※シートの右上「共有」から「リンクを知っている全員（閲覧者）」に設定してください。</p>
+                </div>
+
+                <div class="setting-group" style="background: #EBF8FF; padding: 16px; border-radius: 12px; border: 2px solid #BEE3F8;">
+                    <label>☁️ クラウド同期URL (GAS Web App)</label>
+                    <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="input-field">
+                    <p class="help-text">※外出先から設定変更や進捗確認をしたい場合に設定します。</p>
+                </div>
+
+                <div class="setting-group">
+                    <label>🔔 Discord Webhook URL (通知連携)</label>
+                    <input type="url" id="webhook-url-input" placeholder="https://discord.com/api/webhooks/..." class="input-field">
+                </div>
+                
+                <div class="setting-group" style="background: #FFF9E6; padding: 16px; border-radius: 12px; border: 2px solid var(--accent);">
+                    <div style="margin-bottom: 12px;">
+                        <label>🎯 なんにち連続クリアでチケット？</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="coupon-days-input" value="3" min="1" max="30" class="input-field" style="width: 80px;">
+                            <span style="font-weight: 700;">日連続</span>
+                        </div>
+                    </div>
+                    <label>🎁 チケットのなまえ（ごほうび）</label>
+                    <input type="text" id="coupon-prize-input" value="TikTok 2時間見放題権" placeholder="TikTok 2時間見放題権、など" class="input-field">
+                </div>
+
+                <div class="setting-group time-count-settings">
+                    <div>
+                        <label>⏱️ 1日の目標時間 (分)</label>
+                        <input type="number" id="target-time-input" value="60" class="input-field">
+                    </div>
+                    <div>
+                        <label>🎯 1日の目標数 (問)</label>
+                        <input type="number" id="target-count-input" value="20" class="input-field">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label>📅 曜日ごとの教科設定</label>
+                    <div class="schedule-grid" id="schedule-grid">
+                        <!-- JSで生成 -->
+                    </div>
+                </div>
+
+                <button id="save-settings-btn" class="btn-primary mt-4">💾 設定を保存する</button>
+            </div>
+        </main>
+
+        <!-- カレンダーモーダル -->
+        <div id="calendar-modal" class="modal-overlay hidden" style="z-index: 150;">
+            <div class="modal-content">
+                <h2 style="color: var(--secondary); margin-bottom: 16px;">📅 がんばりカレンダー</h2>
+                <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <button id="cal-prev-btn" class="btn-ghost" style="padding: 4px 12px;">◀</button>
+                    <span id="cal-month-text" style="font-weight: 800; font-size: 1.2rem;">2026年3月</span>
+                    <button id="cal-next-btn" class="btn-ghost" style="padding: 4px 12px;">▶</button>
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                    <!-- JSでカレンダー生成 -->
+                </div>
+                <button id="close-calendar-btn" class="btn-primary mt-4">とじる</button>
+            </div>
+        </div>
+
+        <!-- チケットBoxモーダル -->
+        <div id="coupon-box-modal" class="modal-overlay hidden" style="z-index: 150;">
+            <div class="modal-content">
+                <h2 style="color: var(--primary); margin-bottom: 16px;">🎟️ チケットボックス</h2>
+                <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 16px;">つかうチケットをえらんで、おうちのひとに見せながら「つかう」ボタンをおしてね！</p>
+                
+                <div id="coupon-list-container" style="max-height: 50vh; overflow-y: auto; padding: 4px; display: flex; flex-direction: column; gap: 12px;">
+                    <!-- JSで未使用チケットを生成 -->
+                </div>
+
+                <button id="close-coupon-box-btn" class="btn-primary mt-4">とじる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知トースト -->
+    <div id="toast" class="toast hidden">設定を保存しました</div>
+
+    <script src="app.js?v=2"></script>
+</body>
+</html>
